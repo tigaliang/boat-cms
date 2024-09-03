@@ -25,7 +25,6 @@ dotenv.load_dotenv()
 
 
 def gen_billings() -> [MedicalBilling]:
-    model = ChatOpenAI(model="gpt-4o-mini")
     examples = [
         {
             "example": """Patient ID: 123456, Patient Name: John Doe, Diagnosis Code: 
@@ -54,6 +53,7 @@ def gen_billings() -> [MedicalBilling]:
     synthetic_data_generator = create_openai_data_generator(
         output_schema=MedicalBilling,
         llm=ChatOpenAI(
+            model="gpt-4o-mini",
             temperature=1
         ),  # You'll need to replace with your actual Language Model instance
         prompt=prompt_template,
