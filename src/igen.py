@@ -14,6 +14,15 @@ class Instruction(BaseModel):
 
 dotenv.load_dotenv()
 
+# 参数说明
+# subject: str - 产品名称，例如"扫地机器人"
+# operation: str - 要执行的操作，例如"开始扫地"
+# style: str - 语音风格，例如"常规"、"正式"或"随意"
+# examples: list[str] - 示例短语列表
+# slots: str - 占位符说明，默认为空字符串
+# n: int - 每次运行生成的短语数量，默认为10
+# extra: str - 额外信息或指令，默认为空字符串
+# runs: int - 运行次数，默认为1
 
 def generate(subject: str, operation: str, style: str, examples: list[str], slots: str = '', n=10, extra='',
              runs=1) -> [Instruction]:
