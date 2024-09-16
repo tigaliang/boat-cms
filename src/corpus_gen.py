@@ -46,11 +46,30 @@ def manage_corpus_gen(conn):
         intent_description = c.fetchone()[0]
         st.text_area("意图说明", value=intent_description, height=100, key="intent_description")
 
+        # 新增 Example TextArea
+        corpus_example = st.text_area(
+            "Example",
+            placeholder="请输入示例,每行一个",
+            height=100,
+            key="corpus_example"
+        )
+
         # 额外信息
-        extra_info = st.text_area("额外信息", height=100, key="extra_info")
+        extra_info = st.text_area("额外信息", height=100, key="extra_info",value=feature_description)
+
+        # 风格选择和生成条数输入框并排显示
+        col1, col2 = st.columns(2)
+        with col1:
+            style_options = ["常规(Normal)", "正式(Formal)", "随意(Casual)", "口语化(Colloquial)"]
+            selected_style = st.selectbox("选择风格", style_options, key="style_select")
+        with col2:
+            num_generations = st.number_input("生成条数", min_value=1, max_value=100, value=10, step=1, key="num_generations")
 
         generate_button = st.form_submit_button("一键生成")
 
+    # 处理 Example 输入,分割成数组
+    example_array = [line.strip() for line in corpus_example.split('\n') if line.strip()]
+    
     # 初始化会话状态
     if 'generated_corpus' not in st.session_state:
         st.session_state.generated_corpus = None
@@ -59,7 +78,17 @@ def manage_corpus_gen(conn):
 
     # 生成语料按钮
     if generate_button:
-        st.session_state.generated_corpus = generate_corpus(selected_intent_id,selected_product, selected_intent, intent_description, feature_description)
+        st.session_state.generated_corpus = generate_corpus(
+            selected_intent_id,
+            selected_product,
+            selected_intent,
+            intent_description,
+            feature_description,
+            extra_info,
+            selected_style,
+            example_array,
+            num_generations  # 新增参数
+        )
 
     # 显示生成的语料
     if st.session_state.generated_corpus is not None:
@@ -83,7 +112,6 @@ def manage_corpus_gen(conn):
 
         selected_rows = grid_response['selected_rows']
         updated_df = grid_response['data']
-        print("调试: 更新后的数据:", updated_df)
 
         if not selected_rows is None and not selected_rows.empty:
             print("First element of selected_rows:", selected_rows[0])
@@ -101,7 +129,6 @@ def manage_corpus_gen(conn):
         # 如果导入按钮被点击,执行导入操作
         if st.session_state.import_clicked:
             st.write("开始导入语料...")
-            st.write(f"意图ID: {selected_intent_id}")
             st.write(f"数据: {updated_df}")
             try:
                 import_corpus(conn, updated_df, selected_intent_id)
@@ -113,7 +140,7 @@ def manage_corpus_gen(conn):
                 st.error(f"导入过程中出错: {str(e)}")
             st.write("导入过程完成")
 
-def generate_corpus(intent_id,product_name, intent_name, intent_description, extra_info):
+def generate_corpus(intent_id, product_name, intent_name, intent_description, feature_description, extra_info, style, examples, nums):
     # 这里应该实现您的语料生成逻辑
     # 现在只返回一些示例数据
     # 导入必要的库
@@ -127,15 +154,16 @@ def generate_corpus(intent_id,product_name, intent_name, intent_description, ext
     st.write(f"意图名称: {intent_name}")
     st.write(f"意图描述: {intent_description}")
     st.write(f"额外信息: {extra_info}")
+    st.write(f"示例: {examples}")
 
     # 根据提供的信息生成语料
     generated_phrases = igen.generate(
         subject=product_name,
         operation=intent_name,
-        style="常规",
-        examples=[],
+        style=style.split('(')[1].strip(')'),  # 只取英文部分
+        examples=examples,  # 使用处理后的示例数组
         slots="",
-        n=10,
+        n=nums,  # 使用用户指定的生成条数
         extra=extra_info,
         runs=1
     )
