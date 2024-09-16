@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_aggrid import GridUpdateMode, DataReturnMode
@@ -12,6 +12,7 @@ from slot import manage_slots  # 确保这行导入存在
 from intent import manage_intents
 from corpus import manage_corpus  # 导入 manage_corpus 函数
 from corpus_gen import manage_corpus_gen  # 导入新的函数
+import hashlib
 
 # 设置页面配置
 st.set_page_config(layout="wide", page_title="语料管理系统")
@@ -107,47 +108,83 @@ conn.commit()
 
 
 
+# 添加用户认证相关函数
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def check_password(username, password):
+    hashed_password = hash_password(password)
+    return username == "root" and hashed_password == hash_password("root123")
+
+def login():
+    st.subheader("登录")
+    username = st.text_input("用户名")
+    password = st.text_input("密码", type="password")
+    if st.button("登录"):
+        if check_password(username, password):
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.success("登录成功！")
+            st.rerun()
+        else:
+            st.error("用户名或密码错误")
+
+def logout():
+    st.session_state.logged_in = False
+    st.session_state.username = None
+    st.success("已退出登录")
+    st.rerun()
+
+# 修改 main 函数
 def main():
-    # 主内容区域
-    st.markdown('<div class="main-content">', unsafe_allow_html=True)
-    st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
 
-    # 添加导航栏
-    col1, col2 = st.columns([1, 4])
-    
-    with col1:
-        st.sidebar.title("导航")
-        navigation = st.sidebar.radio("选择页面", ["产品列表", "功能管理", "Slots管理", "意图管理", "语料管理", "语料生成"])
+    if not st.session_state.logged_in:
+        login()
+    else:
+        # 主内容区域
+        st.markdown('<div class="main-content">', unsafe_allow_html=True)
+        st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
 
-    with col2:
-        if 'selected_product_id' not in st.session_state:
-            st.session_state.selected_product_id = None
+        # 添加导航栏
+        col1, col2 = st.columns([1, 4])
+        
+        with col1:
+            st.sidebar.title("导航")
+            navigation = st.sidebar.radio("选择页面", ["产品列表", "功能管理", "Slots管理", "意图管理", "语料管理", "语料生成"])
+            if st.sidebar.button("退出登录"):
+                logout()
 
-        if navigation == "产品列表":
-            manage_products()
-        elif navigation == "功能管理":
-            if 'selected_product_id' not in st.session_state or st.session_state.selected_product_id is None:
-                st.warning("请先选择一个产品")
-                c.execute("SELECT product_id, name FROM products")
-                products = c.fetchall()
-                product_options = {p[1]: p[0] for p in products}
-                selected_product = st.selectbox("选择产品", list(product_options.keys()))
-                if selected_product:
-                    st.session_state.selected_product_id = product_options[selected_product]
-                    st.rerun()
-            else:
-                manage_features(conn)
-        elif navigation == "Slots管理":
+        with col2:
+            if 'selected_product_id' not in st.session_state:
+                st.session_state.selected_product_id = None
+
+            if navigation == "产品列表":
+                manage_products()
+            elif navigation == "功能管理":
+                if 'selected_product_id' not in st.session_state or st.session_state.selected_product_id is None:
+                    st.warning("请先选择一个产品")
+                    c.execute("SELECT product_id, name FROM products")
+                    products = c.fetchall()
+                    product_options = {p[1]: p[0] for p in products}
+                    selected_product = st.selectbox("选择产品", list(product_options.keys()))
+                    if selected_product:
+                        st.session_state.selected_product_id = product_options[selected_product]
+                        st.rerun()
+                else:
+                    manage_features(conn)
+            elif navigation == "Slots管理":
                 manage_slots(conn)  # 只传递 conn 参数
-        elif navigation == "意图管理":
+            elif navigation == "意图管理":
                 manage_intents(conn)
-        elif navigation == "语料管理":
+            elif navigation == "语料管理":
                 manage_corpus(conn)
-        elif navigation == "语料生成":
+            elif navigation == "语料生成":
                 manage_corpus_gen(conn)
 
-    st.markdown('</div>', unsafe_allow_html=True)  # 关闭 content-wrapper
-    st.markdown('</div>', unsafe_allow_html=True)  # 关闭 main-content
+        st.markdown('</div>', unsafe_allow_html=True)  # 关闭 content-wrapper
+        st.markdown('</div>', unsafe_allow_html=True)  # 关闭 main-content
 
 def manage_products():
     st.subheader("产品管理")
@@ -191,7 +228,6 @@ def manage_products():
         st.table(df)
     else:
         st.info("目前没有添加任何产品。")
-
 
 # 在 main 函数中添加：
 if 'view_product' not in st.session_state:

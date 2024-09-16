@@ -58,7 +58,7 @@ def manage_corpus_gen(conn):
         st.session_state.import_clicked = False
 
     # 生成语料按钮
-    if st.button("一键生成"):
+    if generate_button:
         st.session_state.generated_corpus = generate_corpus(selected_intent_id,selected_product, selected_intent, intent_description, feature_description)
 
     # 显示生成的语料
@@ -84,6 +84,11 @@ def manage_corpus_gen(conn):
         selected_rows = grid_response['selected_rows']
         updated_df = grid_response['data']
         print("调试: 更新后的数据:", updated_df)
+
+        if not selected_rows is None and not selected_rows.empty:
+            print("First element of selected_rows:", selected_rows[0])
+            print("Type of first element:", type(selected_rows[0]))
+        print("Type of selected_rows:", type(selected_rows))
 
         if st.button("删除选中行"):
             updated_df = updated_df[~updated_df.index.isin([row['_selectedRowNodeInfo']['nodeRowIndex'] for row in selected_rows])]
@@ -137,7 +142,7 @@ def generate_corpus(intent_id,product_name, intent_name, intent_description, ext
     
     st.text("info: " + str(generated_phrases))
 
-    # 将生成的短语转换为语料数据格式
+    # 将生成的语转换为语料数据式
     corpus_data = []
     for instruction in generated_phrases:
         for phrase in instruction.phrases:

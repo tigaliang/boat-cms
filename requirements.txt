@@ -7,3 +7,4 @@ langchain-experimental~=0.0.64
 langchain-openai~=0.1.23
 streamlit-aggrid
 chardet
+watchdog
