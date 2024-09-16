@@ -25,7 +25,7 @@ class MedicalBilling(BaseModel):
 dotenv.load_dotenv()
 
 
-def gen_billings() -> [MedicalBilling]:
+def gen_billings() -> List[MedicalBilling]:
     examples = [
         {
             "example": """Patient ID: 123456, Patient Name: John Doe, Diagnosis Code: 

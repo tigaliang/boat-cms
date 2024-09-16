@@ -138,7 +138,8 @@ def logout():
 # 修改 main 函数
 def main():
     if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+        #st.session_state.logged_in = False
+        st.session_state.logged_in = True
 
     if not st.session_state.logged_in:
         login()
