@@ -10,6 +10,7 @@ from langchain_experimental.tabular_synthetic_data.prompts import (
     SYNTHETIC_FEW_SHOT_SUFFIX,
 )
 from langchain_openai import ChatOpenAI
+from typing import List
 
 
 class MedicalBilling(BaseModel):

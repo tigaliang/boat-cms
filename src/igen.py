@@ -6,6 +6,7 @@ from langchain_experimental.tabular_synthetic_data.openai import (
     create_openai_data_generator,
 )
 from langchain_openai import ChatOpenAI
+from typing import List
 
 
 class Instruction(BaseModel):
@@ -25,7 +26,7 @@ dotenv.load_dotenv()
 # runs: int - 运行次数，默认为1
 
 def generate(subject: str, operation: str, style: str, examples: list[str], slots: str = '', n=10, extra='',
-             runs=1) -> [Instruction]:
+             runs=1) -> List[Instruction]:
     # examples = ["Start cleaning", "begin cleaning"]
 
     _examples = [
