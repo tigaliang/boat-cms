@@ -25,6 +25,11 @@ def manage_corpus_gen(conn):
     # 获取意图列表
     c.execute("SELECT intent_id, intent_ch FROM intents WHERE product_id = ? AND feature_id = ?", (selected_product_id, selected_feature_id))
     intents = c.fetchall()
+    
+    if not intents:
+        st.warning("该功能下没有意图,请先添加意图。")
+        return  # 如果没有意图,直接返回,不继续执行后面的代码
+
     intent_options = {i[1]: i[0] for i in intents}
     selected_intent = st.selectbox("选择意图", list(intent_options.keys()), key="intent_select")
     selected_intent_id = intent_options[selected_intent]
@@ -150,7 +155,10 @@ def manage_corpus_gen(conn):
         batch_generate_button = st.button("产品批量生成")
 
     if batch_generate_button:
-        batch_generate_corpus(conn, selected_product_id, selected_style, num_generations)
+        if not intents:
+            st.error("该产品下没有意图,无法进行批量生成。请先添加意图。")
+        else:
+            batch_generate_corpus(conn, selected_product_id, selected_style, num_generations)
 
 def generate_corpus(intent_id, product_name, intent_name, intent_description, feature_description, extra_info, style, examples, nums):
     # 这里应该实现您的语料生成逻辑
@@ -233,10 +241,18 @@ def batch_generate_corpus(conn, product_id, style, nums):
     c.execute("SELECT feature_id, name, description FROM features WHERE product_id = ?", (product_id,))
     features = c.fetchall()
 
+    if not features:
+        st.warning(f"产品 {product_name} 下没有功能,请先添加功能。")
+        return
+
     for feature_id, feature_name, feature_description in features:
         # 获取所有意图
         c.execute("SELECT intent_id, intent_ch, description FROM intents WHERE product_id = ? AND feature_id = ?", (product_id, feature_id))
         intents = c.fetchall()
+
+        if not intents:
+            st.warning(f"功能 {feature_name} 下没有意图,跳过该功能。")
+            continue
 
         for intent_id, intent_name, intent_description in intents:
             # 获取示例 ,先当作空进行处理
