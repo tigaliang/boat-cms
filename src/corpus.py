@@ -6,14 +6,14 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 import chardet
 import io
 
-# 在文件开头添加这些行
-if 'upload_state' not in st.session_state:
-    st.session_state.upload_state = 'initial'
-if 'preview_data' not in st.session_state:
-    st.session_state.preview_data = None
 
 def manage_corpus(conn):
     st.header("语料管理")
+
+    if 'upload_state' not in st.session_state:
+     st.session_state.upload_state = 'initial'
+    if 'preview_data' not in st.session_state:
+        st.session_state.preview_data = None
 
     # 获取所有产品
     c = conn.cursor()
