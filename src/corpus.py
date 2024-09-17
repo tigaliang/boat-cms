@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 from st_aggrid import AgGrid, GridOptionsBuilder
 import chardet
+import io
 
 # 在文件开头添加这些行
 if 'upload_state' not in st.session_state:
@@ -32,36 +33,37 @@ def manage_corpus(conn):
     intent_options = {"全部": None}
     intent_options.update({intent[1]: intent[0] for intent in intents})
 
-    # 创建意图选择下拉框
+    # 建意图选择下拉框
     selected_intent = st.selectbox("选择意图", options=list(intent_options.keys()), index=0)
     selected_intent_id = intent_options[selected_intent]
 
-    # 查询语料
+    # 修改查询语句
     if selected_intent_id:
         c.execute("""
-            SELECT c.corpus_id, i.intent_ch, c.intent_en, s.name as slot_name, c.score, c.is_active 
+            SELECT f.name as feature_zh, f.name_en as feature_en, 
+                   i.intent_ch, i.intent_en, c.intent_en as corpus, c.score,
+                   c.corpus_id, c.is_active
             FROM corpus c
             JOIN intents i ON c.intent_id = i.intent_id
-            LEFT JOIN slots s ON c.slot_id = s.slot_id
+            LEFT JOIN features f ON i.feature_id = f.feature_id
             WHERE i.intent_id = ?
         """, (selected_intent_id,))
     else:
         c.execute("""
-            SELECT c.corpus_id, i.intent_ch, c.intent_en, s.name as slot_name, c.score, c.is_active 
+            SELECT f.name as feature_zh, f.name_en as feature_en, 
+                   i.intent_ch, i.intent_en, c.intent_en as corpus, c.score,
+                   c.corpus_id, c.is_active
             FROM corpus c
             JOIN intents i ON c.intent_id = i.intent_id
-            LEFT JOIN slots s ON c.slot_id = s.slot_id
+            LEFT JOIN features f ON i.feature_id = f.feature_id
             WHERE i.product_id = ?
         """, (product_id,))
 
     corpus_data = c.fetchall()
 
-    # 添加"意图列表"标题
-    st.subheader("意图列表", divider="rainbow")
-
-    # 显示语料列表
+    # 更新显示语料列表的部分
     if corpus_data:
-        df = pd.DataFrame(corpus_data, columns=['ID', '中文意图', '英文语料', '关联Slot', '得分', '是否激活'])
+        df = pd.DataFrame(corpus_data, columns=['Feature(zh)', 'Feature(en)', 'Intent(zh)', 'Intent(en)', 'corpus', 'score', 'ID', '是否激活'])
         
         gb = GridOptionsBuilder.from_dataframe(df)
         gb.configure_pagination(paginationAutoPageSize=True)
@@ -196,6 +198,64 @@ def manage_corpus(conn):
             st.session_state.preview_data = None
             if st.button("刷新页面"):
                 st.rerun()
+
+    # 将导出功能移到这里（页面最后）
+    st.subheader("导出语料", divider="rainbow")
+
+    # 导出当前显示的语料
+    if 'df' in locals() and not df.empty:
+        csv = df.to_csv(index=False)
+        st.download_button(
+            label="下载当前显示语料",
+            data=csv,
+            file_name=f"current_corpus_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+        )
+
+    # 导出全部语料
+    export_format = st.radio("选择导出格式", ["中英文","中文", "英文"], index=0)
+
+    if st.button("导出全部语料"):
+        # 构建查询
+        query = """
+            SELECT f.name as feature_zh, f.name_en as feature_en, 
+                   i.intent_ch, i.intent_en, c.intent_en as corpus, c.score
+            FROM corpus c
+            JOIN intents i ON c.intent_id = i.intent_id
+            LEFT JOIN features f ON i.feature_id = f.feature_id
+            WHERE i.product_id = ?
+        """
+        params = [product_id]
+
+        if selected_intent_id:
+            query += " AND i.intent_id = ?"
+            params.append(selected_intent_id)
+
+        c.execute(query, params)
+        all_corpus_data = c.fetchall()
+
+        if all_corpus_data:
+            df_export = pd.DataFrame(all_corpus_data, columns=['Feature(zh)', 'Feature(en)', 'Intent(zh)', 'Intent(en)', 'corpus', 'score'])
+
+            # 根据选择的格式调整DataFrame
+            if export_format == "中文":
+                df_export = df_export[['Feature(zh)', 'Intent(zh)', 'corpus', 'score']]
+            elif export_format == "英文":
+                df_export = df_export[['Feature(en)', 'Intent(en)', 'corpus', 'score']]
+            # 中英文格式保持原样
+
+            # 创建CSV
+            csv = df_export.to_csv(index=False, encoding='utf-8-sig')
+
+            # 创建下载按钮时也指定编码
+            st.download_button(
+                label=f"下载{export_format}CSV文件",
+                data=csv.encode('utf-8-sig'),
+                file_name=f"all_corpus_export_{export_format}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+            )
+        else:
+            st.info("没有找到相关语料")
 
     # 在这里可以添更多功能，如批量导入、导出等
 
