@@ -140,6 +140,18 @@ def manage_corpus_gen(conn):
                 st.error(f"导入过程中出错: {str(e)}")
             st.write("导入过程完成")
 
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        style_options = ["常规(Normal)", "正式(Formal)", "随意(Casual)", "口语化(Colloquial)"]
+        selected_style = st.selectbox("选择风格", style_options, key="style_select_patch")
+    with col2:
+        num_generations = st.number_input("生成条数", min_value=1, max_value=100, value=10, step=1, key="num_generations_patch")
+    with col3:
+        batch_generate_button = st.button("产品批量生成")
+
+    if batch_generate_button:
+        batch_generate_corpus(conn, selected_product_id, selected_style, num_generations)
+
 def generate_corpus(intent_id, product_name, intent_name, intent_description, feature_description, extra_info, style, examples, nums):
     # 这里应该实现您的语料生成逻辑
     # 现在只返回一些示例数据
@@ -209,3 +221,46 @@ def import_corpus(conn, df, intent_id):
         c.execute(query, (intent_id, row['槽位ID'], row['英文意图'], row['分数']))
     conn.commit()
     st.write("import_corpus函数执行完毕")
+
+def batch_generate_corpus(conn, product_id, style, nums):
+    c = conn.cursor()
+
+    # 获取产品名称和描述
+    c.execute("SELECT name, description FROM products WHERE product_id = ?", (product_id,))
+    product_name, product_description = c.fetchone()
+
+    # 获取所有功能
+    c.execute("SELECT feature_id, name, description FROM features WHERE product_id = ?", (product_id,))
+    features = c.fetchall()
+
+    for feature_id, feature_name, feature_description in features:
+        # 获取所有意图
+        c.execute("SELECT intent_id, intent_ch, description FROM intents WHERE product_id = ? AND feature_id = ?", (product_id, feature_id))
+        intents = c.fetchall()
+
+        for intent_id, intent_name, intent_description in intents:
+            # 获取示例 ,先当作空进行处理
+            examples = []
+
+            # 生成语料
+            generated_corpus = generate_corpus(
+                intent_id,
+                product_name,  # 使用产品名称而不是功能名称
+                intent_name,
+                intent_description,
+                feature_description,
+                feature_description,  # 使用产品描述作为额外信息
+                style,
+                examples,
+                nums
+            )
+
+            # 插入生成的语料
+            for corpus_item in generated_corpus:
+                c.execute("""
+                    INSERT INTO corpus (intent_id, slot_id, intent_en, score, is_active)
+                    VALUES (?, ?, ?, ?, 1)
+                """, (intent_id, corpus_item[1], corpus_item[2], corpus_item[3]))
+
+    conn.commit()
+    st.success(f"已为产品 {product_name} 的所有功能和意图生成并插入语料")
