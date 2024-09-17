@@ -65,10 +65,12 @@ c.execute('''CREATE TABLE IF NOT EXISTS features
              (feature_id INTEGER PRIMARY KEY,
               product_id INTEGER,
               name TEXT,
+              name_en TEXT,
               description TEXT,
               created_at DATETIME,
               is_active BOOLEAN DEFAULT 1,
               FOREIGN KEY(product_id) REFERENCES products(product_id))''')
+
 
 c.execute('''CREATE TABLE IF NOT EXISTS slots
              (slot_id INTEGER PRIMARY KEY,
@@ -243,5 +245,6 @@ if 'manage_product' not in st.session_state:
 
 if __name__ == '__main__':
     main()
+
 
 
